@@ -30,6 +30,7 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() pixelSize: number;
   @Input() fillStyle = '#424242';
   @Input() disabled = false;
+  @Input() disablePixels: string[] = [];
 
   @Output() mouseDown: EventEmitter<Pixel> = new EventEmitter<Pixel>();
   @Output() mouseMove: EventEmitter<Pixel> = new EventEmitter<Pixel>();
@@ -64,7 +65,7 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     this.calculateGridSizes();
-    this.gridService.pixels = this.generatePixels();
+    this.gridService.pixels = this.generatePixels(this.disablePixels);
   }
 
   ngAfterViewInit() {
@@ -146,7 +147,7 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
 
     ([] as Pixel[]).concat(...pixels).forEach((pixel) => {
       const { x, y } = pixel;
-      if (pixel.fillStyle) {
+      if (pixel.fillStyle && !pixel.disabled) {
         this.renderingContext.fillStyle = pixel.fillStyle;
         this.renderingContext.fillRect(
           x * this.pixelSize + this.paddingLeft,
@@ -198,7 +199,7 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
     this.paddingBottom = this.height - this.yNodes * this.pixelSize - this.paddingTop;
   }
 
-  private generatePixels() {
+  private generatePixels(disabledPixels?: string[]) {
     const pixels: Pixel[] = [];
     let index = 0;
     for (let y = 0; y < this.yNodes; y++) {
@@ -207,6 +208,7 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
           id: `${y}-${x}`,
           x,
           y,
+          disabled: disabledPixels.includes(`${y}-${x}`),
         };
 
         index++;
