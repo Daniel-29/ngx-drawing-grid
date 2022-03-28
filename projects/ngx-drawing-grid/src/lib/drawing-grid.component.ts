@@ -28,8 +28,9 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() xNodes: number;
   @Input() yNodes: number;
   @Input() pixelSize: number;
-  @Input() fillStyle = '#424242';
+  @Input() fillStyle = "#424242";
   @Input() disabled = false;
+  @Input() disableStyle = "#d9d9d9";
   @Input() disablePixels: string[] = [];
 
   @Output() mouseDown: EventEmitter<Pixel> = new EventEmitter<Pixel>();
@@ -37,7 +38,7 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
   @Output() mouseUp: EventEmitter<Pixel> = new EventEmitter<Pixel>();
   @Output() contextMenu: EventEmitter<Pixel> = new EventEmitter<Pixel>();
 
-  @ViewChild('canvas') canvasRef: ElementRef<HTMLCanvasElement>;
+  @ViewChild("canvas") canvasRef: ElementRef<HTMLCanvasElement>;
 
   renderingContext: CanvasRenderingContext2D;
 
@@ -58,20 +59,25 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((isMouseLocked) => (this.isMouseLocked = isMouseLocked));
 
-    this.gridService.pixels$.pipe(distinctUntilChanged(), takeUntil(this.destroy$)).subscribe((pixels) => {
-      if (pixels && this.renderingContext) {
-        this.render(pixels);
-      }
-    });
+    this.gridService.pixels$
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((pixels) => {
+        if (pixels && this.renderingContext) {
+          this.render(pixels);
+        }
+      });
 
     this.calculateGridSizes();
     this.gridService.pixels = this.generatePixels(this.disablePixels);
   }
 
   ngAfterViewInit() {
-    this.renderingContext = this.canvasRef.nativeElement.getContext('2d');
+    this.renderingContext = this.canvasRef.nativeElement.getContext("2d");
 
     this.clearCanvas();
+    if (this.disablePixels.length > 0) {
+      this.renderDisabledPixels();
+    }
     this.renderGrid();
   }
 
@@ -93,7 +99,11 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.disabled && this.isMouseLocked) {
       const pixel = this.getPixelAt(event.offsetX, event.offsetY);
       if (pixel) {
-        if (this.cachedPixel && this.cachedPixel.x === pixel.x && this.cachedPixel.y === pixel.y) {
+        if (
+          this.cachedPixel &&
+          this.cachedPixel.x === pixel.x &&
+          this.cachedPixel.y === pixel.y
+        ) {
           return;
         }
 
@@ -156,21 +166,54 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
           this.pixelSize
         );
       }
+      if (pixel.disabled) {
+        this.renderingContext.fillStyle = this.disableStyle;
+        this.renderingContext.fillRect(
+          pixel.x * this.pixelSize + this.paddingLeft,
+          pixel.y * this.pixelSize + this.paddingTop,
+          this.pixelSize,
+          this.pixelSize
+        );
+      }
     });
 
     this.renderGrid();
+  }
+  renderDisabledPixels() {
+    this.gridService.pixels.forEach((pixel) => {
+      if (pixel.disabled) {
+        this.renderingContext.fillStyle = this.disableStyle;
+        this.renderingContext.fillRect(
+          pixel.x * this.pixelSize + this.paddingLeft,
+          pixel.y * this.pixelSize + this.paddingTop,
+          this.pixelSize,
+          this.pixelSize
+        );
+      }
+    });
   }
 
   renderGrid() {
     this.renderingContext.strokeStyle = this.fillStyle;
     this.renderingContext.beginPath();
-
-    for (let x = this.paddingLeft; x <= this.width - this.paddingRight; x += this.pixelSize) {
+    this.renderingContext.moveTo(0, 0);
+    this.renderingContext.lineTo(0, this.height);
+    this.renderingContext.moveTo(0, 0);
+    this.renderingContext.lineTo(this.width, 0);
+    for (
+      let x = this.paddingLeft;
+      x <= this.width - this.paddingRight;
+      x += this.pixelSize
+    ) {
       this.renderingContext.moveTo(x, this.paddingTop);
       this.renderingContext.lineTo(x, this.height - this.paddingBottom);
     }
 
-    for (let y = this.paddingTop; y <= this.height - this.paddingBottom; y += this.pixelSize) {
+    for (
+      let y = this.paddingTop;
+      y <= this.height - this.paddingBottom;
+      y += this.pixelSize
+    ) {
       this.renderingContext.moveTo(this.paddingLeft, y);
       this.renderingContext.lineTo(this.width - this.paddingRight, y);
     }
@@ -195,8 +238,10 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
     this.paddingY = this.height - this.yNodes * this.pixelSize;
     this.paddingLeft = Math.ceil(this.paddingX / 3) - 0.5;
     this.paddingTop = Math.ceil(this.paddingY / 3) - 0.5;
-    this.paddingRight = this.width - this.xNodes * this.pixelSize - this.paddingLeft;
-    this.paddingBottom = this.height - this.yNodes * this.pixelSize - this.paddingTop;
+    this.paddingRight =
+      this.width - this.xNodes * this.pixelSize - this.paddingLeft;
+    this.paddingBottom =
+      this.height - this.yNodes * this.pixelSize - this.paddingTop;
   }
 
   private generatePixels(disabledPixels?: string[]) {
@@ -219,6 +264,9 @@ export class DrawingGridComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getPixelAt(x: number, y: number) {
-    return this.gridService.getPixel(Math.floor(x / this.pixelSize), Math.floor(y / this.pixelSize));
+    return this.gridService.getPixel(
+      Math.floor(x / this.pixelSize),
+      Math.floor(y / this.pixelSize)
+    );
   }
 }
